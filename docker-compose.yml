@@ -1,0 +1,5 @@
+services:
+  spacetime:
+    image: clockworklabs/spacetime
+    ports:
+      - "3000:3000"
