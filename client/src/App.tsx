@@ -7,6 +7,7 @@ import {
   Message,
   User,
 } from "./moduleBindings";
+import { useMyPointer, usePointers } from "./usePointer";
 
 const useConnection = () => {
   const [connected, setConnected] = useState(false);
@@ -45,7 +46,11 @@ const useConnection = () => {
         console.log("Message sent.");
       });
 
-      subscribeToQueries(conn, ["SELECT * FROM message", "SELECT * FROM user"]);
+      subscribeToQueries(conn, [
+        "SELECT * FROM message",
+        "SELECT * FROM user",
+        `SELECT * FROM pointer where owner != '${identity.toHexString()}'`,
+      ]);
     };
 
     const onDisconnect = () => {
@@ -147,6 +152,8 @@ export const App = () => {
   const { connected, identity, conn } = useConnection();
   const messages = useMessages(conn);
   const users = useUsers(conn);
+  useMyPointer(conn);
+  const pointers = usePointers(conn);
 
   if (!conn || !connected || !identity) {
     return (
@@ -158,70 +165,105 @@ export const App = () => {
   const name = users.get(identity?.toHexString())?.name;
 
   return (
-    <div>
-      <h1>Chat App</h1>
-      <h3>Chatting as: {name ?? "Unknown User"}</h3>
-      <div style={{ paddingBottom: "1em" }}>
-        {messages
-          .sort((a, b) => (a.sent > b.sent ? 1 : -1))
-          .map((message) => {
-            return (
-              <div
-                style={{ display: "flex", flexDirection: "column" }}
-                key={
-                  message.sender.toHexString() +
-                  message.sent.toString() +
-                  message.text
-                }
-              >
-                <p>
-                  <span style={{ color: "rebeccapurple" }}>
-                    {users.get(message.sender.toHexString())?.name ??
-                      "Anonymous User"}
-                  </span>{" "}
-                  : {message.text}
-                </p>
-                <p style={{ fontSize: "0.5em", color: "gray" }}>
-                  {message.sent.toDate().toLocaleString()}
-                </p>
-              </div>
-            );
-          })}
+    <>
+      <div
+        style={{
+          padding: "8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          height: "calc(100vh - 16px)",
+        }}
+      >
+        <h1>Chat App</h1>
+        <h3>Chatting as: {name ?? "Unknown User"}</h3>
+        <div
+          style={{
+            flex: 1,
+            paddingBottom: "1em",
+            overflowY: "scroll",
+            display: "flex",
+            flexDirection: "column-reverse",
+            gap: "8px",
+          }}
+        >
+          {messages
+            .sort((a, b) => (a.sent > b.sent ? 1 : -1))
+            .map((message) => {
+              return (
+                <div
+                  style={{ display: "flex", flexDirection: "column" }}
+                  key={
+                    message.sender.toHexString() +
+                    message.sent.toDate().toLocaleString() +
+                    message.text
+                  }
+                >
+                  <p>
+                    <span style={{ color: "rebeccapurple" }}>
+                      {users.get(message.sender.toHexString())?.name ??
+                        "Anonymous User"}
+                    </span>{" "}
+                    : {message.text}
+                  </p>
+                  <p style={{ fontSize: "0.5em", color: "gray" }}>
+                    {message.sent.toDate().toLocaleString()}
+                  </p>
+                </div>
+              );
+            })}
+        </div>
+
+        {name ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!newMessage) return;
+              conn.reducers.sendMessage(newMessage);
+              setNewMessage(null);
+            }}
+            style={{ display: "flex", flexDirection: "row", gap: "8px" }}
+          >
+            <input
+              value={newMessage ?? ""}
+              type="text"
+              placeholder="Enter your message"
+              onChange={(e) => setNewMessage(e.target.value)}
+            />
+            <button>Send Message</button>
+          </form>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = nameRef.current?.value;
+              if (!name) return;
+
+              conn.reducers.setName(name);
+            }}
+            style={{ display: "flex", flexDirection: "row", gap: "8px" }}
+          >
+            <input type="text" placeholder="Enter your name" ref={nameRef} />
+            <button type="submit">Set Name</button>
+          </form>
+        )}
       </div>
-
-      {name ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!newMessage) return;
-            conn.reducers.sendMessage(newMessage);
-            setNewMessage(null);
-          }}
-          style={{ display: "flex", flexDirection: "row", gap: "8px" }}
-        >
-          <input
-            value={newMessage ?? ""}
-            type="text"
-            placeholder="Enter your message"
-            onChange={(e) => setNewMessage(e.target.value)}
-          />
-          <button>Send Message</button>
-        </form>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const name = nameRef.current?.value;
-            if (!name) return;
-
-            conn.reducers.setName(name);
-          }}
-          style={{ display: "flex", flexDirection: "row", gap: "8px" }}
-        >
-          <input type="text" placeholder="Enter your name" ref={nameRef} />
-          <button type="submit">Set Name</button>
-        </form>
-      )}
-    </div>
+      {[...pointers.entries()].map(([id, pointer]) => {
+        return (
+          <div
+            key={id}
+            style={{
+              position: "absolute",
+              left: pointer.positionX,
+              top: pointer.positionY,
+              backgroundColor: "rebeccapurple",
+              width: "4px",
+              height: "4px",
+              borderRadius: "50%",
+            }}
+          ></div>
+        );
+      })}
+    </>
   );
 };

@@ -11,6 +11,13 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  max-height: 100vh;
+  max-width: 100vw;
+}
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 @media (prefers-color-scheme: light) {
