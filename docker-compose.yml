@@ -3,3 +3,4 @@ services:
     image: clockworklabs/spacetime
     ports:
       - "3000:3000"
+    command: "start"
