@@ -200,7 +200,7 @@ export const App = () => {
                   }
                 >
                   <p>
-                    <span style={{ color: "rebeccapurple" }}>
+                    <span style={{ color: "bisque" }}>
                       {users.get(message.sender.toHexString())?.name ??
                         "Anonymous User"}
                     </span>{" "}
@@ -256,10 +256,11 @@ export const App = () => {
               position: "absolute",
               left: pointer.positionX,
               top: pointer.positionY,
-              backgroundColor: "rebeccapurple",
+              backgroundColor: "bisque",
               width: "4px",
               height: "4px",
               borderRadius: "50%",
+              opacity: 0.5,
             }}
           ></div>
         );
