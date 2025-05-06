@@ -8,19 +8,33 @@ pub struct User {
     online: bool,
 }
 
-#[table(name = message, public)]
-pub struct Message {
-    sender: Identity,
-    sent: Timestamp,
-    text: String,
-}
-
 #[table(name = pointer, public)]
 pub struct Pointer {
     #[primary_key]
     owner: Identity,
     position_x: f32,
     position_y: f32,
+}
+
+#[table(name = room, public)]
+pub struct Room {
+    #[primary_key]
+    #[auto_inc]
+    id: u128,
+    #[index(btree)]
+    name: String,
+}
+
+#[table(name = message, public)]
+pub struct Message {
+    #[primary_key]
+    #[auto_inc]
+    id: u128,
+    sender: Identity,
+    sent: Timestamp,
+    text: String,
+    #[index(btree)]
+    room: u128,
 }
 
 /// Takes a name and checks if it's acceptable as a user's name.
@@ -59,12 +73,18 @@ fn validate_message(text: String) -> Result<String, String> {
 
 #[reducer]
 /// Clients invoke this reducer to send messages.
-pub fn send_message(ctx: &ReducerContext, text: String) -> Result<(), String> {
+pub fn send_message(ctx: &ReducerContext, text: String, room_id: u128) -> Result<(), String> {
+    if ctx.db.room().id().find(room_id).is_none() {
+        log::error!("Room not found");
+        return Err("Room not found".to_string());
+    };
     let text = validate_message(text)?;
     log::info!("Message sent");
     ctx.db.message().insert(Message {
+        id: 0,
         sender: ctx.sender,
         text,
+        room: room_id,
         sent: ctx.timestamp,
     });
     Ok(())
@@ -141,4 +161,17 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
             ctx.sender
         );
     }
+}
+
+#[reducer(init)]
+pub fn init_db(ctx: &ReducerContext) {
+    ["General", "Fun Links", "Book Club", "Videos"].map(|name| {
+        // Insert room if not exists
+        if ctx.db.room().name().filter(name).next().is_none() {
+            ctx.db.room().insert(Room {
+                id: 0,
+                name: name.to_string(),
+            });
+        };
+    });
 }

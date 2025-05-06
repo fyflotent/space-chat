@@ -1,13 +1,10 @@
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 import { useEffect, useRef, useState } from "react";
-import {
-  DbConnection,
-  ErrorContext,
-  EventContext,
-  Message,
-  User,
-} from "./moduleBindings";
+import { DbConnection, ErrorContext } from "./moduleBindings";
+import { useMessages } from "./useMessages";
 import { useMyPointer, usePointers } from "./usePointer";
+import { useRooms } from "./useRooms";
+import { useUsers } from "./useUsers";
 
 const useConnection = () => {
   const [connected, setConnected] = useState(false);
@@ -47,7 +44,7 @@ const useConnection = () => {
       });
 
       subscribeToQueries(conn, [
-        "SELECT * FROM message",
+        "SELECT * FROM room",
         "SELECT * FROM user",
         `SELECT * FROM pointer where owner != '${identity.toHexString()}'`,
       ]);
@@ -81,79 +78,28 @@ const useConnection = () => {
   };
 };
 
-const useMessages = (conn: DbConnection | null): Message[] => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  useEffect(() => {
-    if (!conn) return;
-    const onNewMessage = (_: EventContext, message: Message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
-    };
-    conn.db.message.onInsert(onNewMessage);
-
-    const onDelete = (_ctx: EventContext, message: Message) => {
-      setMessages((prev) =>
-        prev.filter(
-          (m) =>
-            m.text !== message.text &&
-            m.sent !== message.sent &&
-            m.sender !== message.sender
-        )
-      );
-    };
-    conn.db.message.onDelete(onDelete);
-
-    return () => {
-      conn.db.message.removeOnInsert(onNewMessage);
-      conn.db.message.removeOnDelete(onDelete);
-    };
-  }, [conn]);
-  return messages;
-};
-
-function useUsers(conn: DbConnection | null): Map<string, User> {
-  const [users, setUsers] = useState<Map<string, User>>(new Map());
-
-  useEffect(() => {
-    if (!conn) return;
-    const onInsert = (_ctx: EventContext, user: User) => {
-      setUsers((prev) => new Map(prev.set(user.identity.toHexString(), user)));
-    };
-    conn.db.user.onInsert(onInsert);
-
-    const onUpdate = (_ctx: EventContext, oldUser: User, newUser: User) => {
-      setUsers((prev) => {
-        prev.delete(oldUser.identity.toHexString());
-        return new Map(prev.set(newUser.identity.toHexString(), newUser));
-      });
-    };
-    conn.db.user.onUpdate(onUpdate);
-
-    const onDelete = (_ctx: EventContext, user: User) => {
-      setUsers((prev) => {
-        prev.delete(user.identity.toHexString());
-        return new Map(prev);
-      });
-    };
-    conn.db.user.onDelete(onDelete);
-
-    return () => {
-      conn.db.user.removeOnInsert(onInsert);
-      conn.db.user.removeOnUpdate(onUpdate);
-      conn.db.user.removeOnDelete(onDelete);
-    };
-  }, [conn]);
-
-  return users;
-}
-
 export const App = () => {
   const nameRef = useRef<HTMLInputElement | null>(null);
-  const [newMessage, setNewMessage] = useState<string | null>(null);
+  const [roomId, setRoomId] = useState<bigint>(BigInt(1));
+  const [newMessage, setNewMessage] = useState<string>("");
+
   const { connected, identity, conn } = useConnection();
+
   const messages = useMessages(conn);
   const users = useUsers(conn);
+  const rooms = useRooms(conn);
   useMyPointer(conn);
   const pointers = usePointers(conn);
+
+  useEffect(() => {
+    if (!conn || !connected) return;
+
+    const subscription = conn
+      .subscriptionBuilder()
+      .subscribe(`SELECT * FROM message WHERE room = ${roomId.toString()}`);
+
+    return () => subscription.unsubscribe();
+  }, [conn, connected, roomId]);
 
   if (!conn || !connected || !identity) {
     return (
@@ -179,75 +125,149 @@ export const App = () => {
         <h3>Chatting as: {name ?? "Unknown User"}</h3>
         <div
           style={{
-            flex: 1,
-            paddingBottom: "1em",
-            overflowY: "scroll",
             display: "flex",
-            flexDirection: "column-reverse",
+            flexDirection: "row",
             gap: "8px",
+            flex: 1,
+            width: "100%",
           }}
         >
-          {messages
-            .sort((a, b) => (a.sent > b.sent ? 1 : -1))
-            .map((message) => {
+          <nav
+            style={{
+              borderRight: "1px solid bisque",
+              padding: "8px",
+              gap: "8px",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              maxWidth: "200px",
+            }}
+          >
+            <h3>Rooms</h3>
+            <hr style={{ borderColor: "rgba(255,228,196,0.2)", margin: 0 }} />
+            {[...rooms.entries()].map(([id, name]) => {
               return (
-                <div
-                  style={{ display: "flex", flexDirection: "column" }}
-                  key={
-                    message.sender.toHexString() +
-                    message.sent.toDate().toLocaleString() +
-                    message.text
-                  }
-                >
-                  <p>
-                    <span style={{ color: "bisque" }}>
-                      {users.get(message.sender.toHexString())?.name ??
-                        "Anonymous User"}
-                    </span>{" "}
-                    : {message.text}
-                  </p>
-                  <p style={{ fontSize: "0.5em", color: "gray" }}>
-                    {message.sent.toDate().toLocaleString()}
-                  </p>
+                <div key={id}>
+                  <button
+                    onClick={() => setRoomId(id)}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      border: "none",
+                      backgroundColor: "transparent",
+                      color: "bisque",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {name}
+                  </button>
+                  <hr
+                    style={{ borderColor: "rgba(255,228,196,0.2)", margin: 0 }}
+                  />
                 </div>
               );
             })}
+          </nav>
+          <div
+            style={{
+              flex: 1,
+              flexDirection: "column",
+              display: "flex",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                overflowY: "scroll",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                flex: 1,
+                justifyContent: "flex-end",
+              }}
+            >
+              {messages
+                .sort((a, b) => (a.sent > b.sent ? 1 : -1))
+                .map((message) => {
+                  return (
+                    <div
+                      style={{ display: "flex", flexDirection: "column" }}
+                      key={
+                        message.sender.toHexString() +
+                        message.sent.toDate().toLocaleString() +
+                        message.text
+                      }
+                    >
+                      <p>
+                        <span style={{ color: "bisque" }}>
+                          {users.get(message.sender.toHexString())?.name ??
+                            "Anonymous User"}
+                        </span>{" "}
+                        : {message.text}
+                      </p>
+                      <p style={{ fontSize: "0.5em", color: "gray" }}>
+                        {message.sent.toDate().toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+            {name ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newMessage) return;
+                  console.log("Sending message:", newMessage, roomId);
+                  conn.reducers.sendMessage(newMessage, roomId);
+                  setNewMessage("");
+                }}
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  gap: "8px",
+                  width: "100%",
+                }}
+              >
+                <input
+                  value={newMessage ?? ""}
+                  type="text"
+                  placeholder="Enter your message"
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button>Send Message</button>
+              </form>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = nameRef.current?.value;
+                  if (!name) return;
+
+                  conn.reducers.setName(name);
+                }}
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  gap: "8px",
+                  width: "100%",
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  ref={nameRef}
+                  style={{ flex: 1 }}
+                />
+                <button type="submit">Set Name</button>
+              </form>
+            )}
+          </div>
         </div>
-
-        {name ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!newMessage) return;
-              conn.reducers.sendMessage(newMessage);
-              setNewMessage(null);
-            }}
-            style={{ display: "flex", flexDirection: "row", gap: "8px" }}
-          >
-            <input
-              value={newMessage ?? ""}
-              type="text"
-              placeholder="Enter your message"
-              onChange={(e) => setNewMessage(e.target.value)}
-            />
-            <button>Send Message</button>
-          </form>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const name = nameRef.current?.value;
-              if (!name) return;
-
-              conn.reducers.setName(name);
-            }}
-            style={{ display: "flex", flexDirection: "row", gap: "8px" }}
-          >
-            <input type="text" placeholder="Enter your name" ref={nameRef} />
-            <button type="submit">Set Name</button>
-          </form>
-        )}
       </div>
+
       {[...pointers.entries()].map(([id, pointer]) => {
         return (
           <div
