@@ -6,7 +6,6 @@ export const useMessages = (conn: DbConnection | null): Message[] => {
   useEffect(() => {
     if (!conn) return;
     const onNewMessage = (_: EventContext, message: Message) => {
-      console.log("New message:", message);
       setMessages((prevMessages) => [...prevMessages, message]);
     };
     conn.db.message.onInsert(onNewMessage);

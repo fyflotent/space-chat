@@ -18,19 +18,26 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  color: bisque;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button {
+  background: bisque;
+  outline: none;
+  color: #000;
+  border: none;
+}
+
+input {
+  border: 1px solid bisque;
+  background-color: transparent;
+  padding: 8px;
+  color: bisque;
+  outline: none;
+}
+
+h1 {
+  margin: 0;
 }
 
 p {
