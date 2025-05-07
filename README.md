@@ -22,5 +22,5 @@ The server is a SpacetimeDB instance hosted on docker.
 From the client directory:
 
 1. `npm i`
-   1. this also generates module bindings so ensure spacetime cli is installed first
+   1. This also generates module bindings so ensure spacetime cli is installed first
 1. Start the dev server with `npm run dev`
