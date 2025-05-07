@@ -1,3 +1,4 @@
+use rustrict::CensorStr;
 use spacetimedb::{reducer, table, Identity, ReducerContext, Table, Timestamp};
 
 #[table(name = user, public)]
@@ -66,6 +67,8 @@ pub fn set_name(ctx: &ReducerContext, name: String) -> Result<(), String> {
 fn validate_message(text: String) -> Result<String, String> {
     if text.is_empty() {
         Err("Messages must not be empty".to_string())
+    } else if text.is_inappropriate() {
+        Err("Message is inappropriate".to_string())
     } else {
         Ok(text)
     }

@@ -219,6 +219,11 @@ export const App = () => {
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!newMessage) return;
+                  conn.reducers.onSendMessage((ctx) => {
+                    if (ctx.event.status.tag === "Failed") {
+                      alert("Error sending message: " + ctx.event.status.value);
+                    }
+                  });
                   conn.reducers.sendMessage(newMessage, roomId);
                   setNewMessage("");
                 }}
