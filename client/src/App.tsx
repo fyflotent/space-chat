@@ -1,5 +1,6 @@
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 import { useEffect, useRef, useState } from "react";
+import BurgerMenu from "./assets/burgerMenu.svg?react";
 import { DbConnection, ErrorContext } from "./moduleBindings";
 import { useMessages } from "./useMessages";
 import { useMyPointer, usePointers } from "./usePointer";
@@ -74,6 +75,7 @@ export const App = () => {
   const nameRef = useRef<HTMLInputElement | null>(null);
   const [roomId, setRoomId] = useState<bigint>(BigInt(1));
   const [newMessage, setNewMessage] = useState<string>("");
+  const [openNav, setOpenNav] = useState(false);
 
   const { connected, identity, conn } = useConnection();
 
@@ -115,17 +117,20 @@ export const App = () => {
         <div
           style={{
             display: "flex",
-            gap: "8px",
+            gap: "16px",
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
             borderBottom: "1px solid bisque",
           }}
         >
+          <BurgerMenu
+            onClick={() => setOpenNav(!openNav)}
+            className="burger-menu"
+          />
           <div>
             <h1>Chat</h1>
-            <p>Chatting as: {name ?? "Unknown User"}</p>
           </div>
+          <p>Chatting as: {name ?? "Unknown User"}</p>
         </div>
         <div
           style={{
@@ -136,17 +141,7 @@ export const App = () => {
             width: "100%",
           }}
         >
-          <nav
-            style={{
-              borderRight: "1px solid bisque",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              maxWidth: "200px",
-              minWidth: "200px",
-              alignItems: "center",
-            }}
-          >
+          <nav className={openNav ? "open" : "closed"}>
             <h3>Rooms</h3>
             {[...rooms.entries()].map(([id, name]) => {
               return (
@@ -194,23 +189,37 @@ export const App = () => {
                   .map((message) => {
                     return (
                       <div
-                        style={{ display: "flex", flexDirection: "column" }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                        }}
                         key={
                           message.sender.toHexString() +
                           message.sent.toDate().toLocaleString() +
                           message.text
                         }
                       >
-                        <p>
-                          <span style={{ color: "bisque" }}>
-                            {users.get(message.sender.toHexString())?.name ??
-                              "Anonymous User"}
-                          </span>{" "}
-                          : {message.text}
+                        <p
+                          style={{
+                            fontWeight: "600",
+                            verticalAlign: "center",
+                          }}
+                        >
+                          {users.get(message.sender.toHexString())?.name ??
+                            "Anonymous User"}
+
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "gray",
+                              paddingLeft: "8px",
+                            }}
+                          >
+                            {message.sent.toDate().toLocaleString()}
+                          </span>
                         </p>
-                        <p style={{ fontSize: "0.5em", color: "gray" }}>
-                          {message.sent.toDate().toLocaleString()}
-                        </p>
+                        <p style={{ fontWeight: "500" }}>{message.text}</p>
                       </div>
                     );
                   })}

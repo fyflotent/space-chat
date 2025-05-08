@@ -1,11 +1,11 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Helvetica, Arial, sans-serif, system-ui, Avenir;
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 500;
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #1c1c1c;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -24,16 +24,17 @@ body {
 button {
   background: bisque;
   outline: none;
-  color: #000;
+  color: #292929;
   border: none;
 }
 
 input {
-  border: 1px solid bisque;
-  background-color: transparent;
+  background-color: #fffaeb;
+  color: #292929;
+  font-weight: 500;
   padding: 8px;
-  color: bisque;
   outline: none;
+  border: none;
 }
 
 h1 {
@@ -43,4 +44,34 @@ h1 {
 p {
   margin: 0;
   padding: 0;
+  line-height: 24px;
+}
+
+nav {
+  border-right: 1px solid bisque;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 200px;
+  min-width: 200px;
+  align-items: center;
+}
+
+nav.closed {
+  margin-left: -209px;
+  transition: margin-left 0.3s ease-in-out;
+}
+
+nav.open {
+  margin-left: 0;
+  transition: margin-left 0.3s ease-in-out;
+  @media (max-width: 768px) {
+    z-index: 1000;
+  }
+}
+
+.burger-menu {
+  fill: bisque;
+  width: 30px;
+  height: 30px;
 }
