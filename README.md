@@ -24,3 +24,8 @@ From the client directory:
 1. `npm i`
    1. This also generates module bindings so ensure spacetime cli is installed first
 1. Start the dev server with `npm run dev`
+1. Open localhost:5173
+
+## Check it out
+
+![Example of the chat app](./docs/example.png)
